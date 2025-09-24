@@ -1,0 +1,42 @@
+#!/bin/bash
+# FastCGI Cache Purge Script - Trellis Integration
+
+TRIGGER_FILE="{{ fastcgi_cache_purge_trigger_file }}"
+CACHE_DIR="{{ fastcgi_cache_purge_cache_dir }}"
+LOG_FILE="{{ fastcgi_cache_purge_log_file }}"
+
+# Exit if no trigger
+[ ! -f "$TRIGGER_FILE" ] && exit 0
+
+# Log timestamp
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Cache purge triggered" >> "$LOG_FILE"
+
+# Read trigger data
+TRIGGER_DATA=$(cat "$TRIGGER_FILE" 2>/dev/null)
+if [ -z "$TRIGGER_DATA" ]; then
+    rm -f "$TRIGGER_FILE"
+    exit 0
+fi
+
+# Parse patterns
+IFS=';' read -ra PATTERNS <<< "$TRIGGER_DATA"
+
+# Process each pattern
+PURGED_COUNT=0
+for PATTERN in "${PATTERNS[@]}"; do
+    PATTERN=$(echo "$PATTERN" | xargs)  # Trim whitespace
+    [ -z "$PATTERN" ] && continue
+
+    # Find and remove matching cache files
+    while IFS= read -r cache_file; do
+        if [ -f "$cache_file" ]; then
+            rm -f "$cache_file"
+            ((PURGED_COUNT++))
+        fi
+    done < <(find "$CACHE_DIR" -type f -exec grep -l "$PATTERN" {} \; 2>/dev/null)
+done
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Purged $PURGED_COUNT cache files" >> "$LOG_FILE"
+
+# Cleanup
+rm -f "$TRIGGER_FILE"

@@ -1,0 +1,39 @@
+---
+- name: Ensure cache purge is configured
+  when: fastcgi_cache_purge_enabled | default(false)
+  block:
+    - name: Create cache purge script from template
+      template:
+        src: purge-script.sh.j2
+        dest: /usr/local/bin/nginx-cache-purge-cron.sh
+        owner: root
+        group: root
+        mode: '0755'
+      become: yes
+
+    - name: Setup cron job for cache purge
+      cron:
+        name: "nginx-cache-purge"
+        job: "/usr/local/bin/nginx-cache-purge-cron.sh >> {{ fastcgi_cache_purge_log_file }} 2>&1"
+        minute: "*"
+        user: root
+      become: yes
+
+    - name: Ensure log directory exists
+      file:
+        path: "{{ fastcgi_cache_purge_log_file | dirname }}"
+        state: directory
+        owner: root
+        group: adm
+        mode: '0755'
+      become: yes
+
+    - name: Create log file with proper permissions
+      file:
+        path: "{{ fastcgi_cache_purge_log_file }}"
+        state: touch
+        owner: root
+        group: adm
+        mode: '0644'
+      become: yes
+      changed_when: false

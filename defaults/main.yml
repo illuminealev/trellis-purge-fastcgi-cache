@@ -1,0 +1,5 @@
+---
+fastcgi_cache_purge_enabled: true
+fastcgi_cache_purge_cache_dir: "{{ nginx_cache_path | default('/var/cache/nginx') }}"
+fastcgi_cache_purge_trigger_file: /tmp/nginx_cache_purge_trigger
+fastcgi_cache_purge_log_file: /var/log/nginx/cache_purge.log
